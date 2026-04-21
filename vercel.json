@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/match/timeout-settlement",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

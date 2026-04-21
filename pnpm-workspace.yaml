@@ -1,0 +1,8 @@
+packages:
+  - 'client'
+  - 'api'
+allowBuilds:
+  bufferutil: false
+  core-js: false
+  esbuild: false
+  # weapp-tailwindcss: false  # 已移除，之前阻止了 patch 脚本执行

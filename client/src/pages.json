@@ -1,0 +1,60 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "我的名片"
+      }
+    },
+    {
+      "path": "pages/history/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "战绩大厅"
+      }
+    },
+    {
+      "path": "pages/leaderboard/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "排行榜"
+      }
+    },
+    {
+      "path": "pages/assessment/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "能力初始定级"
+      }
+    },
+    {
+      "path": "pages/match/create",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "发起比赛"
+      }
+    },
+    {
+      "path": "pages/match/score-entry",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "录入赛果"
+      }
+    },
+    {
+      "path": "pages/match/confirm",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "确认赛果"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationStyle": "custom",
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "网球名片",
+    "navigationBarBackgroundColor": "#0A0E17",
+    "backgroundColor": "#0A0E17"
+  }
+}
