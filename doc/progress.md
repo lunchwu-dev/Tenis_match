@@ -6,14 +6,23 @@
 
 ## 📊 1. 项目全局状态 (Overall Status)
 
-- **当前阶段 (Current Phase)**：**Phase 0（研发基建与环境准备）**
-- **当前进度基线**：需求设计 100% | 架构设计 100% | 前端开发 30% | 后端开发 60%
-- **整体健康度**：🟢 正常 (On Track)
-- **更新日期**：2026年4月18日
+- **当前阶段 (Current Phase)**：**Phase 2（核心比赛链路联调与构建稳定化）**
+- **当前进度基线**：需求设计 100% | 架构设计 100% | 前端开发 55% | 后端开发 80% | 构建治理 100%
+- **整体健康度**：🟡 稳定推进（编译通过，联调未完成）
+- **更新日期**：2026年4月22日
 
 ---
 
-## 🎯 2. 里程碑与任务拆解 (Milestones & Tasks)
+## 🧭 2. 当前实现状态小结 (Current Delivery Snapshot)
+
+- **构建与类型检查**：已新增根目录统一命令 `pnpm run build`。2026年4月22日已完成 client `vue-tsc`、client `uni build`、api `tsc --noEmit` 与 api `tsc` 全量验证，当前仓库可完整编译。
+- **前端落地情况**：已存在首页、测评、历史、排行榜、比赛创建、比分录入、确认页与自定义 TabBar，主要页面结构与视觉实现已成型。
+- **后端落地情况**：用户、测评、比赛、排行榜、登录等 API 目录及其 controller/service/repository 结构已落地并通过编译，超时结算与 Redis 排行榜更新逻辑已有代码入口。
+- **已识别待闭环项**：首页雷达图仍使用 mock 数据；排行榜页与历史页仍以静态展示为主；比赛创建页仍存在 mock matchId；微信登录仍保留环境变量缺失时的默认密钥；真环境资源与部署链路尚未完成验收。
+
+---
+
+## 🎯 3. 里程碑与任务拆解 (Milestones & Tasks)
 
 根据 `08_项目执行与实施计划.md` 拆分的实施路径，追踪打勾进度：
 
@@ -30,7 +39,7 @@
 - [ ] 创建 Supabase (PostgreSQL) 实例并建立核心表结构。
 - [ ] 申请 Upstash Redis 与 QStash（用于锁、排行榜、延时队列）。
 - [ ] 注册微信小程序主体，获取 AppID，并配置合法域名、订阅消息模板。
-- [ ] 搭建前端（Taro/Uni-app + Tailwind + ECharts）与后端脚手架。
+- [x] 搭建前端（Taro/Uni-app + Tailwind + ECharts）与后端脚手架。
 
 ### ⏳ Phase 1: 用户体系与初始定级闭环
 - [ ] 开发微信一键登录与 JWT/Token 会话管理。
@@ -43,12 +52,12 @@
 - [x] 房主确认开赛：录入用户积分快照机制 (`snapshot_score`)。
 - [x] 比分提交与接收方确认（集成 Redis 分布式锁防多次计分）。
 - [x] 封装独立的 Elo 积分计算引擎服务并对接真实数据。
-- [ ] 前端：比分录入页 (`score-entry.vue`)
-- [ ] 前端：比赛确认/驳回页 (`confirm.vue`)
+- [x] 前端：比分录入页 (`score-entry.vue`)
+- [x] 前端：比赛确认/驳回页 (`confirm.vue`)
 - [ ] 前端：比赛准备室页面完善
 - [ ] 前端：战绩大厅待确认流程串联
-- [ ] 后端：超时自动结算 API (`timeout-settlement`)
-- [ ] 配置 Vercel Cron 每5分钟检查超时比赛
+- [x] 后端：超时自动结算 API (`timeout-settlement`)
+- [x] 配置 Vercel Cron 每5分钟检查超时比赛
 
 ### ⏳ Phase 3: 排行榜引擎与延时静默规则
 - [ ] 实现基于 Redis ZSET 的全局/同城积分排序及名次拉取。
@@ -61,9 +70,10 @@
 
 ---
 
-## 📝 3. 变更与更新日志 (Update Log)
+## 📝 4. 变更与更新日志 (Update Log)
 
 | 日期 | 更新人 | 阶段 | 更新内容记录 | 备注与决策 |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-04-22 | GitHub Copilot | Phase 2 | 完成 monorepo 全量编译修复：补齐根目录 build/type-check 脚本，新增 API tsconfig，修复 client request 类型、Redis 排行榜签名与比赛服务编译错误。同步更新当前实施状态与后续计划文档。 | 本地 `pnpm run build` 已通过；剩余工作转入真实数据联调、环境安全收口与部署验收。 |
 | 2026-04-18 | GitHub Copilot | 设计期 | 完成项目全套产品、技术、架构文档输出。 | 确立使用 Vercel Serverless + Supabase 方案。生成密钥并加入 Gitignore。 |
 | 2026-04-19 | WorkBuddy AI | Phase 2 | 完成比分录入页、比赛确认/驳回页开发；完成后端API（创建/加入/开始/提交/确认/驳回/超时结算）；Elo引擎实现；更新database schema添加reject_count字段。 | 完成比分录入和确认流程前后端串联。 |

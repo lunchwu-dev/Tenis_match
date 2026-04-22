@@ -4,6 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "type-check": "pnpm --filter client run type-check && pnpm --filter api run type-check",
+    "build:client": "pnpm --filter client run build:h5",
+    "build:api": "pnpm --filter api run build",
+    "build": "pnpm run type-check && pnpm run build:client && pnpm run build:api",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

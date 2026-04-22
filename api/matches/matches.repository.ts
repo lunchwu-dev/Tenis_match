@@ -4,6 +4,11 @@
 import { supabase } from '../shared/database';
 import type { MatchResponse, MatchParticipant } from './matches.dto';
 
+type UserMatchRow = {
+  team: 'A' | 'B';
+  matches: (MatchResponse & { participants?: MatchParticipant[] })[] | (MatchResponse & { participants?: MatchParticipant[] }) | null;
+};
+
 export class MatchesRepository {
   /**
    * 创建比赛房间
@@ -98,9 +103,13 @@ export class MatchesRepository {
     if (error) throw error;
 
     // 去重并格式化
-    const matchMap = new Map<string, any>();
-    for (const item of data || []) {
-      const match = item.matches;
+    const matchMap = new Map<string, MatchResponse & { userTeam: 'A' | 'B' }>();
+    for (const item of (data || []) as UserMatchRow[]) {
+      const match = Array.isArray(item.matches) ? item.matches[0] : item.matches;
+      if (!match) {
+        continue;
+      }
+
       if (!matchMap.has(match.id)) {
         matchMap.set(match.id, {
           ...match,

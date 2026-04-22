@@ -18,26 +18,25 @@ export class LeaderboardService {
 
     try {
       // 从 Redis ZSET 获取排名
-      const results = await redis.zrevrange('global_leaderboard', 0, limit - 1, {
+      const results = await redis.zrange<string[]>('global_leaderboard', 0, limit - 1, {
+        rev: true,
         withScores: true,
       });
 
       const entries: LeaderboardEntry[] = [];
-      const userIds = Object.keys(results).filter((_, i) => i % 2 === 0);
-
-      for (let i = 0; i < userIds.length; i++) {
-        const userId = userIds[i];
-        const score = results[userId];
+      for (let i = 0; i < results.length; i += 2) {
+        const userId = results[i];
+        const score = results[i + 1];
         const user = await usersRepository.findById(userId);
 
         if (user) {
           const stats = await usersRepository.getUserMatchStats(userId);
           entries.push({
-            rank: i + 1,
+            rank: i / 2 + 1,
             userId,
             nickname: user.nickname,
             avatar_url: user.avatar_url,
-            score: typeof score === 'number' ? score : parseFloat(score as string),
+            score: parseFloat(score),
             winRate: stats.totalMatches > 0 ? (stats.winMatches / stats.totalMatches) * 100 : 0,
             totalMatches: stats.totalMatches,
           });

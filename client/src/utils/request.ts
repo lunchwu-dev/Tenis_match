@@ -8,7 +8,7 @@ interface ApiResponse<T = any> {
 
 interface RequestOptions {
   url: string;
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   data?: any;
   header?: Record<string, string>;
 }

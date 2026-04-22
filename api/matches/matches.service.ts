@@ -4,6 +4,8 @@
 import { matchesRepository } from './matches.repository';
 import { usersRepository } from '../users/users.repository';
 import { redis } from '../shared/redis';
+import { supabase } from '../shared/database';
+import { config } from '../shared/config';
 import { NotFoundError, ValidationError, ForbiddenError } from '../shared/errors';
 import { calculateEloChange } from './matches.dto';
 import type { CreateMatchDto, SubmitScoreDto, ConfirmScoreDto } from './matches.dto';
@@ -247,7 +249,10 @@ export class MatchesService {
     for (const p of match.participants) {
       const user = await usersRepository.findById(p.user_id);
       if (user) {
-        await redis.zadd('global_leaderboard', user.current_score, p.user_id);
+        await redis.zadd('global_leaderboard', {
+          score: user.current_score,
+          member: p.user_id,
+        });
       }
     }
   }

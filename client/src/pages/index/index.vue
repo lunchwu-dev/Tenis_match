@@ -55,7 +55,7 @@
           class="bg-gradient-to-b from-card-bg to-dark-slate px-6 pb-6 rounded-b-3xl relative"
           :style="{ paddingTop: (statusBarHeight + 20) + 'px' }"
         >
-          <!-- 分享按钮：与 status bar 对齐下沉 -->
+          <!-- 分享按钮 -->
           <view
             class="absolute right-6 w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center"
             :style="{ top: (statusBarHeight + 16) + 'px' }"
@@ -100,12 +100,12 @@
           <!-- 雷达图 -->
           <view class="w-full flex justify-center py-4 relative">
             <view class="w-48 h-48 radar-bg relative flex items-center justify-center">
-              <canvas canvas-id="radarCanvas" id="radarCanvas" class="absolute inset-0 w-48 h-48 z-20"></canvas>
-              <text class="absolute left-1/2 -translate-x-1/2 -top-4 text-[10px] text-gray-400 whitespace-nowrap">底线</text>
-              <text class="absolute -right-4 top-[30%] text-[10px] text-gray-400">发球</text>
-              <text class="absolute -bottom-4 right-[10%] text-[10px] text-gray-400">网前</text>
-              <text class="absolute -bottom-4 left-[10%] text-[10px] text-gray-400">战术</text>
-              <text class="absolute -left-4 top-[30%] text-[10px] text-gray-400">接发</text>
+              <canvas canvas-id="radarCanvas" id="radarCanvas" class="absolute inset-0 w-48 h-48" style="z-index: 2;"></canvas>
+              <text class="absolute text-[10px] text-gray-400 whitespace-nowrap" style="top: -16px; left: 50%; transform: translateX(-50%);">底线</text>
+              <text class="absolute text-[10px] text-gray-400" style="top: 30%; right: -16px;">发球</text>
+              <text class="absolute text-[10px] text-gray-400" style="bottom: -16px; right: 10%;">网前</text>
+              <text class="absolute text-[10px] text-gray-400" style="bottom: -16px; left: 10%;">战术</text>
+              <text class="absolute text-[10px] text-gray-400" style="top: 30%; left: -16px;">接发</text>
             </view>
           </view>
         </view>
@@ -113,39 +113,36 @@
         <!-- 战绩摘要 -->
         <view class="px-6 py-6">
           <text class="font-bold text-[10px] text-gray-400 uppercase tracking-widest mb-4 block">战绩摘要</text>
-          <view class="grid grid-cols-3 gap-3">
-            <view class="bg-card-bg p-4 rounded-2xl flex flex-col items-center">
+          <view class="match-summary-grid">
+            <view class="summary-card">
               <text class="text-gray-500 text-[10px] mb-1">总场次</text>
               <text class="text-xl font-bold font-display text-white">{{ matchCount }}</text>
             </view>
-            <view class="bg-card-bg p-4 rounded-2xl flex flex-col items-center">
+            <view class="summary-card">
               <text class="text-gray-500 text-[10px] mb-1">胜率</text>
               <text class="text-xl font-bold font-display text-tennis-neon">{{ winRate }}%</text>
             </view>
-            <view class="bg-card-bg p-4 rounded-2xl flex flex-col items-center">
+            <view class="summary-card">
               <text class="text-gray-500 text-[10px] mb-1">当前连胜</text>
               <text class="text-xl font-bold font-display text-white">3</text>
             </view>
           </view>
         </view>
 
-        <!-- 底部占位：预留 FAB(68) + TabBar(80) + 间距 -->
-        <view style="height: 180px;"></view>
-      </scroll-view>
-
-      <!-- 悬浮发起比赛按钮：固定在 TabBar 上方 -->
-      <view
-        class="fab-wrap"
-        :style="{ bottom: 'calc(92px + env(safe-area-inset-bottom))' }"
-      >
-        <view
-          @tap="startMatch"
-          class="w-full bg-tennis-neon text-dark-slate font-bold py-4 rounded-2xl text-lg shadow-neon-glow-sm flex justify-center items-center gap-2"
-        >
-          <text class="text-xl leading-none">＋</text>
-          <text>发起比赛录入</text>
+        <!-- 发起比赛按钮：放在 scroll-view 内部，跟随文档流 -->
+        <view class="px-6 pb-4">
+          <view
+            @tap="startMatch"
+            class="w-full bg-tennis-neon text-dark-slate font-bold py-4 rounded-2xl text-lg shadow-neon-glow-sm flex justify-center items-center gap-2"
+          >
+            <text class="text-xl leading-none">＋</text>
+            <text>发起比赛录入</text>
+          </view>
         </view>
-      </view>
+
+        <!-- 底部占位给 TabBar -->
+        <view style="height: 20px;"></view>
+      </scroll-view>
 
       <!-- 自定义 TabBar -->
       <tabbar />
@@ -206,7 +203,7 @@ const drawRadar = () => {
       ctx.stroke()
     }
 
-    const mockData = [0.8, 0.6, 0.4, 0.7, 0.5]
+    const mockData = [0.85, 0.75, 0.55, 0.8, 0.65]
     ctx.beginPath()
     for (let i = 0; i < 5; i++) {
       const angle = (angles[i] * Math.PI) / 180
@@ -217,11 +214,24 @@ const drawRadar = () => {
       else ctx.lineTo(x, y)
     }
     ctx.closePath()
-    ctx.fillStyle = 'rgba(212, 248, 32, 0.2)'
+    ctx.fillStyle = 'rgba(212, 248, 32, 0.35)'
     ctx.fill()
     ctx.strokeStyle = '#D4F820'
     ctx.lineWidth = 2
     ctx.stroke()
+
+    /* 绘制数据点 */
+    for (let i = 0; i < 5; i++) {
+      const angle = (angles[i] * Math.PI) / 180
+      const r = radius * mockData[i]
+      const x = cx + r * Math.cos(angle)
+      const y = cy + r * Math.sin(angle)
+      ctx.beginPath()
+      ctx.arc(x, y, 3, 0, Math.PI * 2)
+      ctx.fillStyle = '#D4F820'
+      ctx.fill()
+    }
+
     ctx.draw()
   }).exec()
 }
@@ -265,15 +275,25 @@ page {
   height: 100vh;
   overflow: hidden;
 }
-.fab-wrap {
-  position: fixed;
-  left: 0;
-  right: 0;
-  padding: 0 24px;
-  z-index: 40;
-}
 .hide-scroll::-webkit-scrollbar { display: none; }
 .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+.match-summary-grid {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.summary-card {
+  flex: 1;
+  background-color: #151A26;
+  padding: 16px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
 .radar-bg {
   background: repeating-radial-gradient(circle at 50% 50%, transparent 0, transparent 20px, rgba(255,255,255,0.05) 20px, rgba(255,255,255,0.05) 21px);
   border-radius: 50%;
