@@ -1,26 +1,38 @@
 <template>
-  <view class="page-root bg-dark-slate text-white relative" :style="{'padding-top': statusBarHeight + 'px'}">
+  <view class="page-root bg-dark-slate text-white relative">
 
-    <!-- 未登录态 -->
-    <view v-if="!userInfo" class="w-full h-screen relative flex flex-col">
+    <!-- ================= 未登录态 ================= -->
+    <view
+      v-if="!userInfo"
+      class="login-view relative flex flex-col"
+      :style="{ paddingTop: statusBarHeight + 'px' }"
+    >
       <view class="absolute inset-0 bg-gradient-to-br from-card-bg to-dark-slate opacity-80"></view>
-      <view class="relative z-10 flex flex-col items-center justify-center flex-1 p-8 text-center">
-        <!-- Logo -->
-        <view class="w-32 h-32 rounded-full border-4 border-tennis-neon flex items-center justify-center mb-8 shadow-neon-glow">
-          <text class="text-7xl">🎾</text>
+
+      <view class="relative z-10 flex-1 flex flex-col items-center px-8 pb-8 text-center">
+        <!-- 中部 Logo 区：上下居中 -->
+        <view class="flex-1 flex flex-col items-center justify-center">
+          <view class="w-32 h-32 rounded-full border-4 border-tennis-neon flex items-center justify-center mb-8 shadow-neon-glow">
+            <text class="text-7xl">🎾</text>
+          </view>
+          <text class="font-display text-5xl font-bold text-white tracking-tight mb-2 text-shadow">网球名片</text>
+          <text class="text-gray-400 text-sm">严肃业余网球爱好者的数字身份</text>
         </view>
-        <text class="font-display text-5xl font-bold text-white tracking-tight mb-2 text-shadow">网球名片</text>
-        <text class="text-gray-400 text-sm mb-12">严肃业余网球爱好者的数字身份</text>
-        <view class="mt-auto w-full">
+
+        <!-- 底部登录区 -->
+        <view class="w-full" :style="{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }">
           <button
             open-type="getPhoneNumber"
             @getphonenumber="handleWechatLogin"
-            class="w-full bg-tennis-neon text-dark-slate font-bold py-4 rounded-xl text-lg flex items-center justify-center gap-2 transition hover:bg-white m-0"
+            class="w-full bg-tennis-neon text-dark-slate font-bold py-4 rounded-xl text-lg flex items-center justify-center gap-2 m-0"
           >
             <text>微信一键登录</text>
           </button>
-          <view class="flex items-center gap-2 justify-center mt-4 text-xs text-gray-500" @click="toggleAgree">
-            <view class="w-4 h-4 rounded-sm border border-tennis-neon flex items-center justify-center" :class="isAgreed ? 'bg-tennis-neon' : ''">
+          <view class="flex items-center gap-2 justify-center mt-4 text-xs text-gray-500" @tap="toggleAgree">
+            <view
+              class="w-4 h-4 rounded-sm border border-tennis-neon flex items-center justify-center"
+              :class="isAgreed ? 'bg-tennis-neon' : ''"
+            >
               <text v-if="isAgreed" class="text-dark-slate text-xs font-bold">✓</text>
             </view>
             <text>已阅读并同意 <text class="text-tennis-neon">用户协议</text> 与 <text class="text-tennis-neon">隐私政策</text></text>
@@ -29,20 +41,29 @@
       </view>
     </view>
 
-    <!-- 已登录态：我的名片 -->
-    <view v-else class="flex flex-col" style="height:100vh; overflow:hidden;">
-
-      <!-- 可滚动内容区 -->
-      <scroll-view scroll-y class="flex-1" :show-scrollbar="false">
-
+    <!-- ================= 已登录态：我的名片 ================= -->
+    <view v-else class="card-root">
+      <!-- 可滚动内容区：显式高度 = 100vh - TabBar(80) - 安全区 -->
+      <scroll-view
+        scroll-y
+        :show-scrollbar="false"
+        class="hide-scroll"
+        :style="{ height: 'calc(100vh - 80px - env(safe-area-inset-bottom))', width: '100%' }"
+      >
         <!-- 名片头部 -->
-        <view class="bg-gradient-to-b from-card-bg to-dark-slate p-6 rounded-b-3xl relative">
-          <!-- 分享按钮 -->
-          <view class="absolute top-12 right-6 w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center">
+        <view
+          class="bg-gradient-to-b from-card-bg to-dark-slate px-6 pb-6 rounded-b-3xl relative"
+          :style="{ paddingTop: (statusBarHeight + 20) + 'px' }"
+        >
+          <!-- 分享按钮：与 status bar 对齐下沉 -->
+          <view
+            class="absolute right-6 w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center"
+            :style="{ top: (statusBarHeight + 16) + 'px' }"
+          >
             <text class="text-gray-400 text-base">↗</text>
           </view>
 
-          <!-- 用户信息行 -->
+          <!-- 用户信息 -->
           <view class="flex items-center gap-4 mb-6">
             <image
               :src="userInfo.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&backgroundColor=d4f820'"
@@ -58,13 +79,13 @@
             </view>
           </view>
 
-          <!-- 积分区域 -->
+          <!-- 积分区 -->
           <view class="flex justify-between items-end mb-6">
             <view>
               <text class="text-gray-400 text-xs mb-1 block">当前综合积分</text>
               <view class="flex items-baseline">
-                <text class="font-display font-bold text-6xl text-white leading-none">{{ Math.floor(userInfo.current_score || 55) }}</text>
-                <text class="font-display font-bold text-2xl text-gray-500 leading-none">.{{ ((userInfo.current_score || 55.4) % 1 * 10).toFixed(0) }}</text>
+                <text class="font-display font-bold text-6xl text-white leading-none">{{ scoreInt }}</text>
+                <text class="font-display font-bold text-2xl text-gray-500 leading-none">.{{ scoreFrac }}</text>
               </view>
             </view>
             <view class="text-right">
@@ -80,12 +101,11 @@
           <view class="w-full flex justify-center py-4 relative">
             <view class="w-48 h-48 radar-bg relative flex items-center justify-center">
               <canvas canvas-id="radarCanvas" id="radarCanvas" class="absolute inset-0 w-48 h-48 z-20"></canvas>
-              <!-- 雷达图标签：text-[10px] 设计稿尺寸 -->
-              <text class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 top-[calc(50%-2px)] text-[10px] text-gray-400 whitespace-nowrap">底线</text>
-              <text class="absolute right-0 top-[30%] -translate-y-1/2 text-[10px] text-gray-400">发球</text>
-              <text class="absolute bottom-1 right-[10%] text-[10px] text-gray-400">网前</text>
-              <text class="absolute bottom-1 left-[10%] text-[10px] text-gray-400">战术</text>
-              <text class="absolute left-0 top-[30%] -translate-y-1/2 text-[10px] text-gray-400">接发</text>
+              <text class="absolute left-1/2 -translate-x-1/2 -top-4 text-[10px] text-gray-400 whitespace-nowrap">底线</text>
+              <text class="absolute -right-4 top-[30%] text-[10px] text-gray-400">发球</text>
+              <text class="absolute -bottom-4 right-[10%] text-[10px] text-gray-400">网前</text>
+              <text class="absolute -bottom-4 left-[10%] text-[10px] text-gray-400">战术</text>
+              <text class="absolute -left-4 top-[30%] text-[10px] text-gray-400">接发</text>
             </view>
           </view>
         </view>
@@ -109,20 +129,21 @@
           </view>
         </view>
 
-        <!-- 底部占位：确保内容不被FAB和TabBar遮挡 -->
-        <view style="height: 140px;"></view>
+        <!-- 底部占位：预留 FAB(68) + TabBar(80) + 间距 -->
+        <view style="height: 180px;"></view>
       </scroll-view>
 
-      <!-- 悬浮发起比赛按钮 - 固定在TabBar上方 -->
-      <view class="absolute bottom-[calc(80px+env(safe-area-inset-bottom))] w-full px-6 z-20 pointer-events-none" style="padding-bottom: env(safe-area-inset-bottom);">
-        <view class="pointer-events-auto">
-          <button
-            @click="startMatch"
-            class="w-full bg-tennis-neon text-dark-slate font-bold py-4 rounded-2xl text-lg shadow-neon-glow-sm transition active:scale-95 flex justify-center items-center gap-2 m-0"
-          >
-            <text>+</text>
-            <text>发起比赛录入</text>
-          </button>
+      <!-- 悬浮发起比赛按钮：固定在 TabBar 上方 -->
+      <view
+        class="fab-wrap"
+        :style="{ bottom: 'calc(92px + env(safe-area-inset-bottom))' }"
+      >
+        <view
+          @tap="startMatch"
+          class="w-full bg-tennis-neon text-dark-slate font-bold py-4 rounded-2xl text-lg shadow-neon-glow-sm flex justify-center items-center gap-2"
+        >
+          <text class="text-xl leading-none">＋</text>
+          <text>发起比赛录入</text>
         </view>
       </view>
 
@@ -134,7 +155,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, getCurrentInstance } from 'vue'
 import tabbar from '@/components/tabbar/index.vue'
 
 const statusBarHeight = ref(20)
@@ -144,9 +165,18 @@ const winRate = ref(62)
 const rankTitle = ref('狠角色')
 const isAgreed = ref(true)
 
+const scoreInt = computed(() => {
+  const s = userInfo.value?.current_score ?? 55.4
+  return Math.floor(s)
+})
+const scoreFrac = computed(() => {
+  const s = userInfo.value?.current_score ?? 55.4
+  return Math.round((s - Math.floor(s)) * 10)
+})
+
 onMounted(() => {
-  const sysInfo = uni.getSystemInfoSync()
-  statusBarHeight.value = sysInfo.statusBarHeight || 20
+  const sys = uni.getSystemInfoSync()
+  statusBarHeight.value = sys.statusBarHeight || 20
   drawRadar()
 })
 
@@ -196,13 +226,11 @@ const drawRadar = () => {
   }).exec()
 }
 
-import { getCurrentInstance } from 'vue'
-
 const toggleAgree = () => {
   isAgreed.value = !isAgreed.value
 }
 
-const handleWechatLogin = (e: any) => {
+const handleWechatLogin = (_e: any) => {
   if (!isAgreed.value) {
     uni.showToast({ title: '请先勾选同意协议', icon: 'none' })
     return
@@ -210,7 +238,7 @@ const handleWechatLogin = (e: any) => {
   userInfo.value = {
     nickname: '张哥',
     avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&backgroundColor=d4f820',
-    current_score: 55.4
+    current_score: 55.4,
   }
 }
 
@@ -223,9 +251,29 @@ const startMatch = () => {
 page {
   background-color: #0A0E17;
 }
-::-webkit-scrollbar {
-  display: none;
+.page-root {
+  width: 100%;
+  min-height: 100vh;
 }
+.login-view {
+  width: 100%;
+  height: 100vh;
+}
+.card-root {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+.fab-wrap {
+  position: fixed;
+  left: 0;
+  right: 0;
+  padding: 0 24px;
+  z-index: 40;
+}
+.hide-scroll::-webkit-scrollbar { display: none; }
+.hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 .radar-bg {
   background: repeating-radial-gradient(circle at 50% 50%, transparent 0, transparent 20px, rgba(255,255,255,0.05) 20px, rgba(255,255,255,0.05) 21px);
   border-radius: 50%;
