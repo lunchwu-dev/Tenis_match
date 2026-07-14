@@ -255,3 +255,96 @@ export function calculateAssessmentResult(
     currentScore: totalScore,
   };
 }
+
+/**
+ * 前端本地题库题号 → 维度/满分 映射
+ * 前端 assessment 页面使用本地动态题库（base/newbie/advanced 三套分叉），
+ * 提交体为 { q1: { score }, q2: { score }, ... } 对象格式，题号 q1~q23 为字符串，
+ * 且无显式维度字段。此处建立与前端题号一一对应的维度映射与单题满分，
+ * 用于把前端提交的成绩聚合为 5 维雷达数据（0-1）与综合积分（0-100）。
+ * 维度归类遵循题目语义：底线相持/正反手→baseline，发球→serve，网前→netplay，
+ * 战术/心理/步伐/规则→tactics，接发球→receive。
+ */
+export const QUESTION_DIMENSION_MAP: Record<
+  string,
+  { dimension: keyof AssessmentResult['radarData']; maxScore: number }
+> = {
+  // baseline（底线相持 / 正反手 / 经验）
+  q1: { dimension: 'baseline', maxScore: 5 },
+  q2: { dimension: 'baseline', maxScore: 6 },
+  q4: { dimension: 'baseline', maxScore: 5 },
+  q5: { dimension: 'baseline', maxScore: 4 },
+  q10: { dimension: 'baseline', maxScore: 8 },
+  q11: { dimension: 'baseline', maxScore: 9 },
+  q12: { dimension: 'baseline', maxScore: 8 },
+  q14: { dimension: 'baseline', maxScore: 6 },
+  // serve（发球）
+  q6: { dimension: 'serve', maxScore: 4 },
+  q15: { dimension: 'serve', maxScore: 8 },
+  q16: { dimension: 'serve', maxScore: 6 },
+  // netplay（网前）
+  q13: { dimension: 'netplay', maxScore: 8 },
+  q19: { dimension: 'netplay', maxScore: 8 },
+  q20: { dimension: 'netplay', maxScore: 7 },
+  q21: { dimension: 'netplay', maxScore: 8 },
+  // tactics（战术 / 心理 / 步伐 / 规则 / 比赛经验）
+  q3: { dimension: 'tactics', maxScore: 10 },
+  q7: { dimension: 'tactics', maxScore: 3 },
+  q8: { dimension: 'tactics', maxScore: 2 },
+  q9: { dimension: 'tactics', maxScore: 5 },
+  q22: { dimension: 'tactics', maxScore: 9 },
+  q23: { dimension: 'tactics', maxScore: 8 },
+  // receive（接发球）
+  q17: { dimension: 'receive', maxScore: 6 },
+  q18: { dimension: 'receive', maxScore: 7 },
+};
+
+/**
+ * 根据前端对象格式答案计算测评结果。
+ * @param answers 形如 [{ qid: 'q1', score: 3 }, ...]
+ */
+export function computeResultFromObject(
+  answers: { qid: string; score: number }[],
+): AssessmentResult {
+  const buckets: Record<string, number[]> = {
+    baseline: [],
+    serve: [],
+    netplay: [],
+    tactics: [],
+    receive: [],
+  };
+  let totalScore = 0;
+  let totalMax = 0;
+
+  for (const { qid, score } of answers) {
+    const meta = QUESTION_DIMENSION_MAP[qid];
+    if (!meta) continue;
+    const ratio = meta.maxScore > 0 ? score / meta.maxScore : 0;
+    buckets[meta.dimension].push(ratio);
+    totalScore += score;
+    totalMax += meta.maxScore;
+  }
+
+  const avgOr = (arr: number[]): number =>
+    arr.length
+      ? Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 100) / 100
+      : 0.5; // 未作答维度取中间值
+
+  const radarData = {
+    baseline: avgOr(buckets.baseline),
+    serve: avgOr(buckets.serve),
+    netplay: avgOr(buckets.netplay),
+    tactics: avgOr(buckets.tactics),
+    receive: avgOr(buckets.receive),
+  };
+
+  const currentScore = totalMax > 0 ? Math.round((totalScore / totalMax) * 1000) / 10 : 50;
+  const ntrpInfo = getNtrpLevel(currentScore);
+
+  return {
+    totalScore: currentScore,
+    ntrpLevel: ntrpInfo.level,
+    radarData,
+    currentScore,
+  };
+}

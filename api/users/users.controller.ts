@@ -4,12 +4,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { usersService } from './users.service';
 import { UnauthorizedError, ValidationError } from '../shared/errors';
-import { config } from '../shared/config';
 import { redis } from '../shared/redis';
-import { createClient } from '@supabase/supabase-js';
-
-// 临时数据库客户端（用于查询）
-const supabase = createClient(config.supabase.url, config.supabase.serviceRoleKey);
 
 /**
  * 从请求中获取当前用户ID
@@ -20,17 +15,14 @@ async function getCurrentUserId(req: VercelRequest): Promise<string | null> {
     return null;
   }
 
-  const token = authHeader.substring(7);
-  if (!config.upstash.redisUrl) {
-    return null;
-  }
+    const token = authHeader.substring(7);
 
-  try {
-    const userId = await redis.get<string>(token);
-    return userId || null;
-  } catch {
-    return null;
-  }
+    try {
+      const userId = await redis.get<string>(token);
+      return userId || null;
+    } catch {
+      return null;
+    }
 }
 
 /**

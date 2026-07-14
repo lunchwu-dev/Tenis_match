@@ -36,6 +36,13 @@
       }
     },
     {
+      "path": "pages/match/room",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "比赛准备室"
+      }
+    },
+    {
       "path": "pages/match/score-entry",
       "style": {
         "navigationStyle": "custom",

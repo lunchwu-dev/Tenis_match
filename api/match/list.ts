@@ -5,13 +5,8 @@
  * 获取用户的比赛列表
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
+import { db } from '../shared/database';
 import { AppError, ValidationError } from '../shared/errors';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -27,7 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 构建查询
-    let query = supabase
+    let query = db
       .from('matches')
       .select(`
         *,
@@ -63,12 +58,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     });
 
-    const { data: users } = await supabase
+    const { data: users } = await db
       .from('users')
       .select('id, nickname, avatar_url')
       .in('id', Array.from(allUserIds));
 
-    const userMap = new Map(users?.map((u: any) => [u.id, u]) || []);
+    const userMap = new Map<string, any>((users as any[] | undefined)?.map((u: any) => [u.id, u]) ?? []);
+
+    // 批量查询当前用户在这些比赛中的积分变动（score_logs 仅在比赛已生效时写入）
+    const matchIds = userMatches.map((m: any) => m.id);
+    const { data: scoreLogs } = await db
+      .from('score_logs')
+      .select('match_id, change_amount')
+      .in('match_id', matchIds)
+      .eq('user_id', userId);
+    const changeMap = new Map<string, number>();
+    for (const log of scoreLogs || []) {
+      changeMap.set(log.match_id, Number(log.change_amount) || 0);
+    }
 
     // 格式化返回数据
     const result = userMatches.map((m: any) => {
@@ -103,6 +110,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         statusColor: statusMap[m.status]?.color || 'gray',
         scoreA: m.score_a,
         scoreB: m.score_b,
+        scoreChange: changeMap.get(m.id) ?? 0,
         currentUserTeam,
         teamA: teamA.map((p: any) => ({
           userId: p.user_id,

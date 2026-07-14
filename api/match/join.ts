@@ -5,13 +5,8 @@
  * 用户通过邀请码加入比赛
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
 import { AppError, ValidationError, UnauthorizedError, NotFoundError } from '../shared/errors';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+import { db } from '../shared/database';
 
 interface JoinMatchBody {
   inviteCode: string; // 6位邀请码
@@ -36,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 验证用户存在
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await db
       .from('users')
       .select('id, nickname, current_score')
       .eq('id', userId)
@@ -47,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 通过邀请码查找比赛（取最后6位匹配）
-    const { data: matches, error: matchError } = await supabase
+    const { data: matches, error: matchError } = await db
       .from('matches')
       .select(`
         id,
@@ -105,7 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 添加参与者
-    const { data: newParticipant, error: participantError } = await supabase
+    const { data: newParticipant, error: participantError } = await db
       .from('match_participants')
       .insert({
         match_id: match.id,
@@ -122,7 +117,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 重新计算是否满员
-    const updatedParticipants = await supabase
+    const updatedParticipants = await db
       .from('match_participants')
       .select('*')
       .eq('match_id', match.id);

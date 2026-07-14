@@ -5,13 +5,8 @@
  * 获取比赛详细信息
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
+import { db } from '../shared/database';
 import { AppError, NotFoundError } from '../shared/errors';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -26,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 获取比赛详情
-    const { data: match, error: matchError } = await supabase
+    const { data: match, error: matchError } = await db
       .from('matches')
       .select(`
         *,
@@ -45,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 获取参与者详情
-    const { data: participants, error: participantsError } = await supabase
+    const { data: participants, error: participantsError } = await db
       .from('match_participants')
       .select(`
         *,

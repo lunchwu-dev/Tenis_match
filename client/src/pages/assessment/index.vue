@@ -1,5 +1,5 @@
 <template>
-  <view id="page-assessment" class="page bg-dark-slate text-white font-body relative assess-root">
+  <view id="page-assessment" class="page bg-dark-slate text-white font-body relative assess-root" :style="rootStyle">
 
     <!-- 顶部栏（避开 status bar） -->
     <view
@@ -7,15 +7,18 @@
       :style="{ paddingTop: (statusBarHeight + 12) + 'px' }"
     >
       <view class="flex justify-between items-center mb-6">
-        <view @tap="goBack" class="text-gray-400">
-          <text class="text-2xl">‹</text>
+        <view @tap="goBack" class="text-gray-400" hover-class="icon-hover">
+          <text class="text-2xl">✕</text>
         </view>
-        <text class="text-tennis-neon font-display font-bold tracking-widest text-sm">能力定级</text>
-        <text class="text-gray-500 font-body text-xs">{{ currentQuestionIndex + 1 }}/{{ totalQuestions }}</text>
+        <view class="flex items-center gap-2">
+          <text class="text-gray-400 text-xs font-medium">第 {{ currentQuestionIndex + 1 }} 题 / 共 {{ totalQuestions }} 题</text>
+          <text class="text-tennis-neon font-display font-bold text-sm">{{ Math.round((currentQuestionIndex + 1) / totalQuestions * 100) }}%</text>
+        </view>
+        <view class="w-6"></view>
       </view>
 
-      <view class="w-full bg-gray-800 h-1.5 rounded-full mb-8 overflow-hidden">
-        <view class="bg-tennis-neon h-full transition-all" :style="{ width: ((currentQuestionIndex + 1) / totalQuestions * 100) + '%' }"></view>
+      <view class="w-full bg-gray-800 h-2 rounded-full mb-8 overflow-hidden">
+        <view class="bg-[#FACC15] h-full transition-all" :style="{ width: ((currentQuestionIndex + 1) / totalQuestions * 100) + '%' }"></view>
       </view>
     </view>
 
@@ -26,24 +29,33 @@
       class="hide-scroll px-6"
       :style="scrollStyle"
     >
-      <text class="text-2xl font-bold mb-8 leading-snug break-words block" v-html="formattedQuestion"></text>
+      <!-- 题号与类别 -->
+      <view class="text-center mb-6">
+        <text class="font-display font-black text-4xl text-[#D4F820]">Q {{ currentQuestionIndex + 1 }}</text>
+        <text class="text-gray-500 text-xs mt-1 block">{{ currentQuestion.category || '能力测试' }}</text>
+      </view>
+
+      <text class="text-lg font-bold mb-8 leading-snug break-words block text-white">{{ currentQuestion.title || '' }}</text>
 
       <view class="flex flex-col gap-4">
         <view
           v-for="(option, index) in currentQuestion.options"
           :key="index"
           @tap="selectOption(index, option)"
-          class="p-5 rounded-2xl bg-card-bg border transition"
-          :class="selectedIndex === index ? 'border-2 border-tennis-neon relative overflow-hidden' : 'border border-gray-800'"
+          class="p-5 rounded-2xl bg-card-bg border transition-all"
+          :class="selectedIndex === index ? 'border-2 border-[#D4F820] relative overflow-hidden' : 'border border-gray-800'"
         >
-          <view v-if="selectedIndex === index" class="absolute inset-0 bg-tennis-neon opacity-5"></view>
-          <view class="flex justify-between items-start mb-1 relative z-10">
-            <text class="font-bold text-white break-normal flex-1 pr-2">{{ option.label }}</text>
-            <view :class="['text-xs font-bold px-2 py-0.5 rounded leading-none flex items-center', selectedIndex === index ? 'text-tennis-neon bg-tennis-neon/10' : 'text-gray-500 bg-gray-800']">
-              +{{ option.score }} 分
+          <view v-if="selectedIndex === index" class="absolute inset-0 bg-[#D4F820]/10"></view>
+          <view class="flex items-start gap-3 relative z-10">
+            <view
+              class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5"
+              :class="selectedIndex === index ? 'bg-[#D4F820] text-dark-slate' : 'bg-gray-800 text-gray-400'"
+            >{{ ['A','B','C','D'][index] }}</view>
+            <view class="flex-1">
+              <text class="font-bold text-white break-normal block">{{ option.label }}</text>
+              <text class="text-xs text-gray-400 break-words block mt-1">{{ option.desc || '' }}</text>
             </view>
           </view>
-          <text class="text-xs text-gray-400 relative z-10 break-words block mt-2">{{ option.desc || '' }}</text>
         </view>
       </view>
 
@@ -59,7 +71,7 @@
         @tap="nextQuestion"
         :class="['w-full font-bold py-4 rounded-xl text-lg flex items-center justify-center transition active:scale-95 relative', selectedIndex !== null ? 'bg-white text-dark-slate' : 'bg-gray-800 text-gray-500 pointer-events-none']"
       >
-        <text>{{ isLastQuestion ? '完成评估' : '下一题' }}</text>
+        <text>{{ '下一题' }}</text>
         <text class="absolute right-6">›</text>
       </view>
     </view>
@@ -68,9 +80,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { request } from '../../utils/request'
+import { request } from '@/utils/request'
+import { useViewport } from '@/utils/viewport'
 import qData from './questions'
 
+const { rootStyle } = useViewport()
 const baseQuestions = qData.baseQuestions
 
 const statusBarHeight = ref(20)
@@ -87,7 +101,10 @@ const totalQuestions = computed(() => currentQuestions.value.length)
 // header: statusBar + 12(上) + 48(title row + margin) + 30(progress + margin) ≈ statusBar + 90
 // footer: 按钮 64 + 12(上) + 12(下) + safe-area
 const scrollStyle = computed(() => ({
-  height: `calc(100vh - ${statusBarHeight.value + 90}px - 88px - env(safe-area-inset-bottom))`,
+  flexGrow: '1',
+  flexShrink: '1',
+  flexBasis: '0%',
+  minHeight: '0',
   width: '100%',
 }))
 
@@ -133,13 +150,13 @@ const nextQuestion = async () => {
     uni.showLoading({ title: '正在生成评估报告...' })
     try {
       const res = await request<any>({
-        url: '/api/evaluate',
+        url: '/api/assessment/submit',
         method: 'POST',
         data: { answers: answers.value }
       })
       uni.hideLoading()
       if (res && res.success) {
-        uni.setStorageSync('user_info', JSON.stringify(res.data.user))
+        uni.setStorageSync('user_info', res.data.user)
         uni.reLaunch({ url: '/pages/index/index' })
       }
     } catch(err) {
@@ -166,6 +183,7 @@ page {
 }
 .header { flex-shrink: 0; }
 .footer { flex-shrink: 0; }
+.icon-hover { opacity: 0.6; }
 .hide-scroll::-webkit-scrollbar { display: none; }
 .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 </style>

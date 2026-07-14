@@ -1,7 +1,7 @@
 /**
  * 用户 Repository - 数据访问层
  */
-import { supabase } from '../shared/database';
+import { db } from '../shared/database';
 import type { UserProfileResponse } from './users.dto';
 
 export class UsersRepository {
@@ -9,7 +9,7 @@ export class UsersRepository {
    * 根据用户ID获取用户信息
    */
   async findById(userId: string): Promise<UserProfileResponse | null> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('users')
       .select('*')
       .eq('id', userId)
@@ -23,7 +23,7 @@ export class UsersRepository {
    * 根据微信 OpenID 获取用户信息
    */
   async findByOpenId(openId: string): Promise<UserProfileResponse | null> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('users')
       .select('*')
       .eq('wx_openid', openId)
@@ -41,7 +41,7 @@ export class UsersRepository {
     avatar_url?: string;
     gender?: number;
   }): Promise<UserProfileResponse> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('users')
       .update(updates)
       .eq('id', userId)
@@ -56,7 +56,7 @@ export class UsersRepository {
    * 更新用户积分
    */
   async updateScore(userId: string, newScore: number): Promise<UserProfileResponse> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('users')
       .update({ current_score: newScore })
       .eq('id', userId)
@@ -71,7 +71,7 @@ export class UsersRepository {
    * 更新雷达图数据
    */
   async updateRadarData(userId: string, radarData: any): Promise<UserProfileResponse> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('users')
       .update({ radar_data: radarData })
       .eq('id', userId)
@@ -91,7 +91,7 @@ export class UsersRepository {
     loseMatches: number;
   }> {
     // 查询用户参与的比赛
-    const { data: participants, error } = await supabase
+    const { data: participants, error } = await db
       .from('match_participants')
       .select(`
         match_id,
@@ -133,7 +133,7 @@ export class UsersRepository {
    * 获取用户最近N场比赛结果
    */
   async getRecentMatchResults(userId: string, limit: number = 5): Promise<('W' | 'L')[]> {
-    const { data: participants, error } = await supabase
+    const { data: participants, error } = await db
       .from('match_participants')
       .select(`
         team,

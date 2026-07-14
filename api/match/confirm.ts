@@ -6,20 +6,10 @@
  * 如果所有人（或除提交者外所有人）都确认，触发结算
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
-import { Redis } from '@upstash/redis';
+import { db } from '../shared/database';
+import { redis } from '../shared/redis';
 import { AppError, ValidationError, ForbiddenError } from '../shared/errors';
 import { calculateEloChange, calculateDoublesEloChange } from '../shared/elo';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
-
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_KV_REST_API_URL || '',
-  token: process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN || '',
-});
 
 interface ConfirmScoreBody {
   matchId: string;
@@ -43,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 获取分布式锁
     const lockKey = `match_lock_${matchId}`;
-    const lockAcquired = await redis.set(lockKey, '1', { px: 5000, nx: true });
+    const lockAcquired = await redis.set(lockKey, '1', { px: 30000, nx: true });
 
     if (!lockAcquired) {
       return res.status(429).json({
@@ -54,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
       // 获取比赛信息
-      const { data: match, error: matchError } = await supabase
+      const { data: match, error: matchError } = await db
         .from('matches')
         .select('*')
         .eq('id', matchId)
@@ -70,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // 获取参与者
-      const { data: participants, error: participantsError } = await supabase
+      const { data: participants, error: participantsError } = await db
         .from('match_participants')
         .select('*')
         .eq('match_id', matchId);
@@ -89,13 +79,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // 更新确认状态
-      await supabase
+      await db
         .from('match_participants')
         .update({ confirm_status: 1 }) // 1=已确认
         .eq('id', participant.id);
 
       // 重新获取所有参与者状态
-      const { data: allParticipants } = await supabase
+      const { data: allParticipants } = await db
         .from('match_participants')
         .select('*')
         .eq('match_id', matchId);
@@ -148,7 +138,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     console.error('Confirm score error:', error);
-    return res.status(500).json({ error: 'Server error' });
+    const detail =
+      (error as any)?.message ||
+      (error as any)?.details ||
+      (error as any)?.hint ||
+      'Server error';
+    return res.status(500).json({ error: 'Server error', detail });
   }
 }
 
@@ -185,13 +180,13 @@ async function settleMatch(
       const userId = teamA[i].user_id;
       const newScore = result.newScoresA[i];
 
-      await supabase
+      await db
         .from('users')
         .update({ current_score: newScore })
         .eq('id', userId);
 
       // 记录流水
-      await supabase.from('score_logs').insert({
+      await db.from('score_logs').insert({
         user_id: userId,
         match_id: matchId,
         change_amount: result.changesA[i],
@@ -208,12 +203,12 @@ async function settleMatch(
       const userId = teamB[i].user_id;
       const newScore = result.newScoresB[i];
 
-      await supabase
+      await db
         .from('users')
         .update({ current_score: newScore })
         .eq('id', userId);
 
-      await supabase.from('score_logs').insert({
+      await db.from('score_logs').insert({
         user_id: userId,
         match_id: matchId,
         change_amount: result.changesB[i],
@@ -234,12 +229,12 @@ async function settleMatch(
 
     // 更新A队
     if (teamA[0]) {
-      await supabase
+      await db
         .from('users')
         .update({ current_score: result.newScoreA })
         .eq('id', teamA[0].user_id);
 
-      await supabase.from('score_logs').insert({
+      await db.from('score_logs').insert({
         user_id: teamA[0].user_id,
         match_id: matchId,
         change_amount: result.changeA,
@@ -254,12 +249,12 @@ async function settleMatch(
 
     // 更新B队
     if (teamB[0]) {
-      await supabase
+      await db
         .from('users')
         .update({ current_score: result.newScoreB })
         .eq('id', teamB[0].user_id);
 
-      await supabase.from('score_logs').insert({
+      await db.from('score_logs').insert({
         user_id: teamB[0].user_id,
         match_id: matchId,
         change_amount: result.changeB,
@@ -274,7 +269,7 @@ async function settleMatch(
   }
 
   // 更新比赛状态为已生效
-  await supabase
+  await db
     .from('matches')
     .update({ status: 3 }) // 3=已生效
     .eq('id', matchId);

@@ -5,19 +5,8 @@
  * 房主确认开赛，锁定参赛人员并记录积分快照
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
-import { Redis } from '@upstash/redis';
+import { db } from '../shared/database';
 import { AppError, ValidationError, ForbiddenError } from '../shared/errors';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
-
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_KV_REST_API_URL || '',
-  token: process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN || '',
-});
 
 interface StartMatchBody {
   matchId: string;
@@ -40,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 获取比赛信息
-    const { data: match, error: matchError } = await supabase
+    const { data: match, error: matchError } = await db
       .from('matches')
       .select('*')
       .eq('id', matchId)
@@ -61,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 获取所有参与者
-    const { data: participants, error: participantsError } = await supabase
+    const { data: participants, error: participantsError } = await db
       .from('match_participants')
       .select('*')
       .eq('match_id', matchId);
@@ -87,26 +76,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 获取所有用户的最新积分（更新快照）
     const userIds = participants.map((p: any) => p.user_id);
-    const { data: users, error: usersError } = await supabase
+    const { data: users, error: usersError } = await db
       .from('users')
       .select('id, current_score')
       .in('id', userIds);
 
     if (usersError) throw usersError;
 
-    const userScoreMap = new Map(users?.map((u: any) => [u.id, u.current_score || 50]));
+    const userScoreMap = new Map(users?.map((u: any) => [u.id, u.current_score ?? 50]));
 
     // 更新每个参与者的积分快照
     for (const participant of participants) {
-      const currentScore = userScoreMap.get(participant.user_id) || 50;
-      await supabase
+      const currentScore = userScoreMap.get(participant.user_id) ?? 50;
+      await db
         .from('match_participants')
         .update({ snapshot_score: currentScore })
         .eq('id', participant.id);
     }
 
     // 更新比赛状态为"进行中"
-    const { error: updateError } = await supabase
+    const { error: updateError } = await db
       .from('matches')
       .update({ status: 1 })
       .eq('id', matchId);

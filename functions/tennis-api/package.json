@@ -1,0 +1,7 @@
+{
+  "name": "tennis-api",
+  "version": "1.0.0",
+  "description": "Tennis Match API (Express HTTP function, fully bundled)",
+  "main": "index.js",
+  "dependencies": {}
+}

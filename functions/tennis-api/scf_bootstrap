@@ -1,0 +1,5 @@
+#!/bin/bash
+# CloudBase / Tencent SCF Web 函数启动脚本
+# 代码会被部署到 /var/user/，运行时通过 $PORT 注入监听端口（默认 9000）。
+cd /var/user
+exec node index.js

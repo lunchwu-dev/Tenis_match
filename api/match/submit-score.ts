@@ -6,19 +6,9 @@
  * 设置12小时超时自动生效
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
-import { Redis } from '@upstash/redis';
+import { db } from '../shared/database';
+import { redis } from '../shared/redis';
 import { AppError, ValidationError, ForbiddenError } from '../shared/errors';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
-
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_KV_REST_API_URL || '',
-  token: process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN || '',
-});
 
 interface SubmitScoreBody {
   matchId: string;
@@ -59,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 获取分布式锁（防止重复提交）
     const lockKey = `match_lock_${matchId}`;
-    const lockAcquired = await redis.set(lockKey, '1', { px: 5000, nx: true });
+    const lockAcquired = await redis.set(lockKey, '1', { px: 30000, nx: true });
 
     if (!lockAcquired) {
       return res.status(429).json({
@@ -70,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
       // 获取比赛信息
-      const { data: match, error: matchError } = await supabase
+      const { data: match, error: matchError } = await db
         .from('matches')
         .select('*')
         .eq('id', matchId)
@@ -86,7 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // 获取参与者
-      const { data: participants, error: participantsError } = await supabase
+      const { data: participants, error: participantsError } = await db
         .from('match_participants')
         .select('*')
         .eq('match_id', matchId);
@@ -103,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const timeoutAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
 
       // 更新比赛记录比分和状态
-      const { error: updateError } = await supabase
+      const { error: updateError } = await db
         .from('matches')
         .update({
           score_a: scoreA,
@@ -118,14 +108,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // 重置所有参与者的确认状态（待确认=0）
       for (const participant of participants || []) {
-        await supabase
+        await db
           .from('match_participants')
           .update({ confirm_status: 0 })
           .eq('id', participant.id);
       }
 
       // 获取完整的比赛信息用于返回
-      const { data: updatedMatch } = await supabase
+      const { data: updatedMatch } = await db
         .from('matches')
         .select(`
           *,
@@ -162,6 +152,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     console.error('Submit score error:', error);
-    return res.status(500).json({ error: 'Server error' });
+    const detail =
+      (error as any)?.message ||
+      (error as any)?.details ||
+      (error as any)?.hint ||
+      'Server error';
+    return res.status(500).json({ error: 'Server error', detail });
   }
 }

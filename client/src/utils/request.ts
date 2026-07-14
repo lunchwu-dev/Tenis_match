@@ -1,3 +1,6 @@
+import { getMockResponse } from './mock';
+
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
 interface ApiResponse<T = any> {
@@ -16,6 +19,12 @@ interface RequestOptions {
 export const request = <T = any>(options: RequestOptions): Promise<T> => {
   const { url, method = 'GET', data, header } = options;
 
+  // 离线预览模式：直接返回本地 Mock 数据，避免 wx.request 因无后端而超时（Error: timeout）
+  if (USE_MOCK) {
+    if (import.meta.env.DEV) console.log(`[mock] ${method} ${url}`);
+    return Promise.resolve(getMockResponse(url, method, data) as T);
+  }
+
   return new Promise((resolve, reject) => {
     const token = uni.getStorageSync('auth_token');
 
@@ -23,6 +32,7 @@ export const request = <T = any>(options: RequestOptions): Promise<T> => {
       url: `${BASE_URL}${url}`,
       method,
       data,
+      timeout: 10000,
       header: {
         'Content-Type': 'application/json',
         Authorization: token ? `Bearer ${token}` : '',

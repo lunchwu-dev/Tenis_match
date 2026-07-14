@@ -28,9 +28,9 @@ import { ref, onMounted } from 'vue'
 const hasNotification = ref(true)
 
 const tabs = [
-  { pagePath: '/pages/index/index', text: '名片', icon: '⊞' },
-  { pagePath: '/pages/history/index', text: '战绩', icon: '⚔' },
-  { pagePath: '/pages/leaderboard/index', text: '排行', icon: '#' },
+  { pagePath: '/pages/index/index', text: '名片', icon: '📇' },
+  { pagePath: '/pages/history/index', text: '战绩', icon: '📊' },
+  { pagePath: '/pages/leaderboard/index', text: '排行', icon: '🏆' },
 ]
 
 const currentPath = ref('/pages/index/index')
@@ -57,20 +57,22 @@ const switchTab = (pagePath: string) => {
   right: 0;
   background-color: #151A26;
   border-top: 1px solid #1f2937;
+  z-index: 100;
 }
 
+/* 降低高度以腾出屏效：原 80px → 50px */
 .tabbar-inner {
   display: flex;
   justify-content: space-around;
-  align-items: flex-start;
-  height: 80px;
-  padding-top: 12px;
+  align-items: center;
+  height: 50px;
 }
 
 .tabbar-item {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   flex: 1;
   color: #6b7280; /* gray-500 */
   transition: color 0.2s;
@@ -81,7 +83,7 @@ const switchTab = (pagePath: string) => {
 }
 
 .icon-wrap {
-  width: 28px;
+  width: 24px;
   height: 22px;
   display: flex;
   align-items: center;
@@ -90,7 +92,7 @@ const switchTab = (pagePath: string) => {
 }
 
 .tab-icon {
-  font-size: 24px;
+  font-size: 20px;
   line-height: 1;
   font-weight: 300;
 }
@@ -98,7 +100,7 @@ const switchTab = (pagePath: string) => {
 .tabbar-label {
   font-size: 10px;
   font-weight: 500;
-  margin-top: 4px;
+  margin-top: 2px;
   line-height: 1;
 }
 

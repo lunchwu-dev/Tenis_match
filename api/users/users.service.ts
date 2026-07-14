@@ -3,9 +3,8 @@
  */
 import { usersRepository } from './users.repository';
 import { redis } from '../shared/redis';
-import { config } from '../shared/config';
 import { NotFoundError } from '../shared/errors';
-import { supabase } from '../shared/database';
+import { db } from '../shared/database';
 import type { UserProfileResponse, UpdateUserProfileDto, UserMatchStats } from './users.dto';
 
 export class UsersService {
@@ -48,7 +47,7 @@ export class UsersService {
       return existing;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('users')
       .insert([{ wx_openid: openId, nickname: nickname || '网球新星' }])
       .select()
@@ -88,9 +87,7 @@ export class UsersService {
   async generateToken(userId: string): Promise<string> {
     const token = `token__${Date.now()}_${Math.random().toString(36).substr(2)}`;
 
-    if (config.upstash.redisUrl) {
-      await redis.setex(token, 604800, userId); // 7天有效期
-    }
+    await redis.setex(token, 604800, userId); // 7天有效期
 
     return token;
   }
@@ -99,10 +96,6 @@ export class UsersService {
    * 验证 Token 并返回用户ID
    */
   async validateToken(token: string): Promise<string | null> {
-    if (!config.upstash.redisUrl) {
-      return null; // Redis 未配置时跳过验证
-    }
-
     try {
       const userId = await redis.get<string>(token);
       return userId || null;

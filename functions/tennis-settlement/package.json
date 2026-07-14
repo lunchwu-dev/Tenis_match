@@ -1,0 +1,7 @@
+{
+  "name": "tennis-settlement",
+  "version": "1.0.0",
+  "description": "CloudBase Timer 事件函数：每 12 小时自动结算超时未确认的比赛",
+  "main": "index.js",
+  "dependencies": {}
+}

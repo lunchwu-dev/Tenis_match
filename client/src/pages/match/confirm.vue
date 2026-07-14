@@ -1,5 +1,5 @@
 <template>
-  <view class="page bg-[#0A0E17] text-white font-body relative confirm-root">
+  <view class="page bg-[#0A0E17] text-white font-body relative confirm-root" :style="rootStyle">
 
     <!-- 顶部导航 -->
     <view
@@ -8,7 +8,7 @@
     >
       <view class="flex justify-between items-center mb-6">
         <view @tap="goBack" class="text-gray-400">
-          <text class="text-2xl">✕</text>
+          <text class="text-2xl">‹</text>
         </view>
         <text class="text-white font-display font-bold tracking-widest text-lg">确认赛果</text>
         <view class="w-6"></view>
@@ -191,7 +191,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { request } from '@/utils/request';
+import { useViewport } from '@/utils/viewport';
 
+const { rootStyle } = useViewport();
 const statusBarHeight = ref(20);
 const matchId = ref<string>('');
 const submittedScoreA = ref<number>(6);
@@ -200,6 +203,7 @@ const winner = computed(() => submittedScoreA.value > submittedScoreB.value ? 'A
 
 const teamA = ref<{ name: string; avatar: string }>({ name: '张哥', avatar: '' });
 const teamB = ref<{ name: string; avatar: string }>({ name: '李雷', avatar: '' });
+const currentUserId = ref<string>('');
 
 const remainingRejects = ref<number>(3);
 const rejectReason = ref<string>('');
@@ -221,13 +225,28 @@ let countdownTimer: number | null = null;
 // header ≈ statusBar + 12 + 48 ≈ statusBar + 60
 // footer ≈ 确认 64 + 驳回 64 + tip 20 + gap 24 + padding ≈ 200
 const scrollStyle = computed(() => ({
-  height: `calc(100vh - ${statusBarHeight.value + 60}px - 200px - env(safe-area-inset-bottom))`,
+  flexGrow: '1',
+  flexShrink: '1',
+  flexBasis: '0%',
+  minHeight: '0',
   width: '100%',
 }));
 
 onMounted(() => {
   const sys = uni.getSystemInfoSync();
   statusBarHeight.value = sys.statusBarHeight || 20;
+
+  const storedUser = uni.getStorageSync('user_info');
+  if (storedUser) {
+    try {
+      const user = typeof storedUser === 'string' ? JSON.parse(storedUser) : storedUser;
+      currentUserId.value = user.id;
+      teamA.value = {
+        name: user.nickname || '我',
+        avatar: user.avatar_url || '',
+      };
+    } catch (e) {}
+  }
 
   const pages = getCurrentPages();
   const currentPage = pages[pages.length - 1];
@@ -237,8 +256,6 @@ onMounted(() => {
     matchId.value = options.matchId;
     loadMatch(options.matchId);
   } else {
-    teamA.value = { name: '张哥', avatar: '' };
-    teamB.value = { name: '李雷', avatar: '' };
     remainingRejects.value = 3;
     startCountdown();
   }
@@ -250,38 +267,127 @@ onUnmounted(() => {
 
 const goBack = () => { uni.navigateBack(); };
 
-const startCountdown = () => {
-  const totalSeconds = 12 * 60 * 60 - 1000;
-  let remaining = totalSeconds;
-
-  countdownTimer = setInterval(() => {
-    remaining -= 1;
-    if (remaining <= 0) {
-      clearInterval(countdownTimer!);
+const startCountdownFrom = (targetTime: number) => {
+  if (countdownTimer) clearInterval(countdownTimer);
+  const update = () => {
+    const diff = targetTime - Date.now();
+    if (diff <= 0) {
       timeoutRemaining.value = '已超时';
-    } else {
-      const hours = Math.floor(remaining / 3600);
-      const minutes = Math.floor((remaining % 3600) / 60);
-      timeoutRemaining.value = `${hours}小时${minutes}分钟`;
+      if (countdownTimer) clearInterval(countdownTimer);
+      return;
     }
-  }, 1000) as unknown as number;
+    const hours = Math.floor(diff / 3600000);
+    const minutes = Math.floor((diff % 3600000) / 60000);
+    timeoutRemaining.value = `${hours}小时${minutes}分钟`;
+  };
+  update();
+  countdownTimer = setInterval(update, 1000) as unknown as number;
+};
+
+const startCountdown = () => {
+  // 默认从 12 小时倒计时（兜底）
+  startCountdownFrom(Date.now() + 12 * 60 * 60 * 1000);
 };
 
 const loadMatch = async (id: string) => {
   try {
+    const res = await request<{
+      success: boolean;
+      data?: {
+        matchId: string;
+        matchType: string;
+        status: number;
+        scoreA: number | null;
+        scoreB: number | null;
+        creator: { id: string; nickname: string; avatar_url: string };
+        submitterId: string | null;
+        timeoutAt: string | null;
+        rejectCount: number;
+        lastRejectReason: string | null;
+        teamA: Array<{ userId: string; nickname: string; avatarUrl: string; snapshotScore: number }>;
+        teamB: Array<{ userId: string; nickname: string; avatarUrl: string; snapshotScore: number }>;
+        createdAt: string;
+      };
+      error?: string;
+    }>({
+      url: `/api/match/${id}`,
+      method: 'GET',
+    });
+
+    if (!res.success || !res.data) {
+      throw new Error(res.error || '加载比赛失败');
+    }
+
     matchId.value = id;
-    startCountdown();
-  } catch (error) {
-    uni.showToast({ title: '加载失败', icon: 'none' });
+    submittedScoreA.value = res.data.scoreA ?? 0;
+    submittedScoreB.value = res.data.scoreB ?? 0;
+    remainingRejects.value = Math.max(0, 3 - (res.data.rejectCount || 0));
+    rejectReason.value = res.data.lastRejectReason || '';
+
+    const a = res.data.teamA?.[0];
+    const b = res.data.teamB?.[0];
+    if (a) {
+      teamA.value = {
+        name: a.nickname || 'A 队',
+        avatar: a.avatarUrl || '',
+      };
+    }
+    if (b) {
+      teamB.value = {
+        name: b.nickname || 'B 队',
+        avatar: b.avatarUrl || '',
+      };
+    }
+
+    // 根据超时时间启动倒计时
+    if (res.data.timeoutAt) {
+      startCountdownFrom(new Date(res.data.timeoutAt).getTime());
+    }
+  } catch (error: any) {
+    uni.showToast({ title: error.message || '加载失败', icon: 'none' });
   }
 };
 
 const confirmScore = async () => {
+  if (!matchId.value || !currentUserId.value) {
+    uni.showToast({ title: '信息缺失，无法确认', icon: 'none' });
+    return;
+  }
   isProcessing.value = true;
   try {
-    uni.showToast({ title: '确认成功！', icon: 'success' });
+    const res = await request<{
+      success: boolean;
+      data?: {
+        matchId: string;
+        status: string;
+        confirmed: boolean;
+        confirmedCount?: number;
+        totalCount?: number;
+        message?: string;
+        winner?: string;
+        eloChanges?: any;
+      };
+      error?: string;
+    }>({
+      url: '/api/match/confirm',
+      method: 'POST',
+      data: {
+        matchId: matchId.value,
+        userId: currentUserId.value,
+      },
+    });
+
+    if (!res.success) {
+      throw new Error(res.error || '确认失败');
+    }
+
+    const settled = res.data?.status === 'settled';
+    uni.showToast({
+      title: settled ? '比赛已结算！' : '确认成功，等待其他玩家',
+      icon: 'success',
+    });
     setTimeout(() => {
-      uni.switchTab({ url: '/pages/history/index' });
+      uni.reLaunch({ url: '/pages/history/index' });
     }, 1500);
   } catch (error: any) {
     uni.showToast({ title: error.message || '确认失败', icon: 'none' });
@@ -308,12 +414,45 @@ const confirmReject = async () => {
     uni.showToast({ title: '请选择驳回原因', icon: 'none' });
     return;
   }
+  if (!matchId.value || !currentUserId.value) {
+    uni.showToast({ title: '信息缺失，无法驳回', icon: 'none' });
+    return;
+  }
   isRejecting.value = true;
   try {
+    const res = await request<{
+      success: boolean;
+      data?: {
+        matchId: string;
+        status: string;
+        rejectCount: number;
+        remainingRejects: number;
+        message: string;
+        lastRejectReason: string;
+      };
+      error?: string;
+    }>({
+      url: '/api/match/reject',
+      method: 'POST',
+      data: {
+        matchId: matchId.value,
+        userId: currentUserId.value,
+        reason: selectedRejectReason.value,
+      },
+    });
+
+    if (!res.success) {
+      throw new Error(res.error || '驳回失败');
+    }
+
     closeRejectModal();
-    uni.showToast({ title: '已驳回，等待房主重新提交', icon: 'success' });
+    const abandoned = res.data?.status === 'disputed_abandoned';
+    uni.showToast({
+      title: abandoned ? '驳回超限，比赛已作废' : '已驳回，等待房主重新提交',
+      icon: 'success',
+    });
     setTimeout(() => {
-      uni.switchTab({ url: '/pages/history/index' });
+      uni.reLaunch({ url: '/pages/history/index' });
     }, 1500);
   } catch (error: any) {
     const msg = error.message || '驳回失败';

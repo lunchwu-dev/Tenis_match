@@ -1,0 +1,39 @@
+{
+  "envId": "jerrydecloud-d5g18hdmm34d7d90c",
+  "functions": [
+    {
+      "name": "tennis-api",
+      "runtime": "Nodejs18.15",
+      "timeout": 60,
+      "memorySize": 512,
+      "isHTTP": true,
+      "handler": "index.main",
+      "envVariables": {
+        "CLOUDBASE_ENV_ID": "jerrydecloud-d5g18hdmm34d7d90c",
+        "WX_APP_ID": "wx414c6b38efdb1735",
+        "WX_APP_SECRET": "dummy_secret_for_test",
+        "ALLOW_TEST_LOGIN": "true"
+      }
+    },
+    {
+      "name": "tennis-settlement",
+      "runtime": "Nodejs18.15",
+      "timeout": 60,
+      "memorySize": 256,
+      "handler": "index.main",
+      "triggers": [
+        {
+          "name": "settle-every-12h",
+          "type": "timer",
+          "config": "0 0 0,12 * * * *"
+        }
+      ],
+      "envVariables": {
+        "CLOUDBASE_ENV_ID": "jerrydecloud-d5g18hdmm34d7d90c",
+        "WX_APP_ID": "wx414c6b38efdb1735",
+        "WX_APP_SECRET": "dummy_secret_for_test",
+        "ALLOW_TEST_LOGIN": "true"
+      }
+    }
+  ]
+}

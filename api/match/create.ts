@@ -5,21 +5,8 @@
  * 创建一场新的比赛房间
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
-import { Redis } from '@upstash/redis';
+import { db } from '../shared/database';
 import { AppError, ValidationError, UnauthorizedError } from '../shared/errors';
-
-// 初始化 Supabase
-const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
-
-// 初始化 Redis
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_KV_REST_API_URL || '',
-  token: process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN || '',
-});
 
 interface CreateMatchBody {
   matchType: 1 | 2; // 1=单打, 2=双打
@@ -47,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 验证用户存在
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await db
       .from('users')
       .select('id, nickname, current_score')
       .eq('id', userId)
@@ -58,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 创建比赛房间
-    const { data: match, error: matchError } = await supabase
+    const { data: match, error: matchError } = await db
       .from('matches')
       .insert({
         creator_id: userId,
@@ -73,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 添加房主为A队参与者（状态=已确认参与）
-    const { error: participantError } = await supabase
+    const { error: participantError } = await db
       .from('match_participants')
       .insert({
         match_id: match.id,
